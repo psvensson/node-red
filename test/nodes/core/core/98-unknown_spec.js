@@ -1,5 +1,5 @@
 /**
- * Copyright 2015 IBM Corp.
+ * Copyright JS Foundation and other contributors, http://js.foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
  **/
 
 var should = require("should");
-var unknown = require("../../../../nodes/core/core/98-unknown.js");
-var helper = require("../../helper.js");
+var unknown = require("nr-test-utils").require("@node-red/nodes/core/core/98-unknown.js");
+var helper = require("node-red-node-test-helper");
 
 describe('unknown Node', function() {
 

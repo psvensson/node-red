@@ -1,5 +1,5 @@
 /**
- * Copyright 2013, 2015 IBM Corp.
+ * Copyright JS Foundation and other contributors, http://js.foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  **/
 
 var path = require("path");
+var fs = require("fs-extra");
 
 module.exports = function(grunt) {
 
@@ -24,6 +25,10 @@ module.exports = function(grunt) {
         nodemonArgs.push(flowFile);
     }
 
+    var nonHeadless = grunt.option('non-headless');
+    if (nonHeadless) {
+        process.env.NODE_RED_NON_HEADLESS = 'true';
+    }
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         paths: {
@@ -38,7 +43,26 @@ module.exports = function(grunt) {
                 reporter: 'spec'
             },
             all: { src: ['test/**/*_spec.js'] },
-            core: { src: ["test/_spec.js","test/red/**/*_spec.js"]},
+            core: { src: ["test/_spec.js","test/unit/**/*_spec.js"]},
+            nodes: { src: ["test/nodes/**/*_spec.js"]}
+        },
+        webdriver: {
+            all: {
+                configFile: 'test/editor/wdio.conf.js'
+            }
+        },
+        mocha_istanbul: {
+            options: {
+                globals: ['expect'],
+                timeout: 3000,
+                ignoreLeaks: false,
+                ui: 'bdd',
+                reportFormats: ['lcov','html'],
+                print: 'both',
+                istanbulOptions: ['--no-default-excludes', '-i','**/packages/node_modules/**']
+            },
+            all: { src: ["test/unit/_spec.js","test/unit/**/*_spec.js","test/nodes/**/*_spec.js"] },
+            core: { src: ["test/unit/_spec.js","test/unit/**/*_spec.js"]},
             nodes: { src: ["test/nodes/**/*_spec.js"]}
         },
         jshint: {
@@ -58,16 +82,14 @@ module.exports = function(grunt) {
             all: [
                 'Gruntfile.js',
                 'red.js',
-                'red/**/*.js',
-                'nodes/core/*/*.js',
-                'editor/js/**/*.js'
+                'packages/**/*.js'
             ],
             core: {
                 files: {
                     src: [
                         'Gruntfile.js',
                         'red.js',
-                        'red/**/*.js'
+                        'packages/**/*.js',
                     ]
                 }
             },
@@ -86,7 +108,7 @@ module.exports = function(grunt) {
                     src: ['test/**/*.js']
                 },
                 options: {
-					"expr": true
+                    "expr": true
                 }
             }
         },
@@ -95,55 +117,89 @@ module.exports = function(grunt) {
                 separator: ";",
             },
             build: {
-              src: [
-                  // Ensure editor source files are concatenated in
-                  // the right order
-                  "editor/js/main.js",
-                  "editor/js/events.js",
-                  "editor/js/i18n.js",
-                  "editor/js/settings.js",
-                  "editor/js/user.js",
-                  "editor/js/comms.js",
-                  "editor/js/ui/state.js",
-                  "editor/js/nodes.js",
-                  "editor/js/history.js",
-                  "editor/js/validators.js",
-                  "editor/js/ui/deploy.js",
-                  "editor/js/ui/menu.js",
-                  "editor/js/ui/keyboard.js",
-                  "editor/js/ui/tabs.js",
-                  "editor/js/ui/popover.js",
-                  "editor/js/ui/workspaces.js",
-                  "editor/js/ui/view.js",
-                  "editor/js/ui/sidebar.js",
-                  "editor/js/ui/palette.js",
-                  "editor/js/ui/tab-info.js",
-                  "editor/js/ui/tab-config.js",
-                  "editor/js/ui/editor.js",
-                  "editor/js/ui/clipboard.js",
-                  "editor/js/ui/library.js",
-                  "editor/js/ui/notifications.js",
-                  "editor/js/ui/subflow.js",
-                  "editor/js/ui/touch/radialMenu.js"
-              ],
-              dest: "public/red/red.js"
+                src: [
+                    // Ensure editor source files are concatenated in
+                    // the right order
+                    "packages/node_modules/@node-red/editor-client/src/js/jquery-addons.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/red.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/events.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/i18n.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/settings.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/user.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/comms.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/text/bidi.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/text/format.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/state.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/nodes.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/font-awesome.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/history.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/validators.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/utils.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/editableList.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/treeList.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/checkboxSet.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/menu.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/panels.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/popover.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/searchBox.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/tabs.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/stack.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/common/typedInput.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/actions.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/deploy.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/diff.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/keyboard.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/workspaces.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/view.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/view-navigator.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/view-tools.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/sidebar.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/palette.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/tab-info.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/tab-config.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/tab-context.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/palette-editor.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/editor.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/editors/*.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/event-log.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/tray.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/clipboard.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/library.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/notifications.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/search.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/typeSearch.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/subflow.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/userSettings.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/projects/projects.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/projects/projectSettings.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/projects/projectUserSettings.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/projects/tab-versionControl.js",
+                    "packages/node_modules/@node-red/editor-client/src/js/ui/touch/radialMenu.js"
+                ],
+                dest: "packages/node_modules/@node-red/editor-client/public/red/red.js"
             },
             vendor: {
                 files: {
-                    "public/vendor/vendor.js": [
-                        "editor/vendor/jquery/js/jquery-1.11.1.min.js",
-                        "editor/vendor/bootstrap/js/bootstrap.min.js",
-                        "editor/vendor/jquery/js/jquery-ui-1.10.3.custom.min.js",
-                        "editor/vendor/jquery/js/jquery.ui.touch-punch.min.js",
-                        "editor/vendor/marked/marked.min.js",
-                        "editor/vendor/orion/built-editor.min.js",
-                        "editor/vendor/d3/d3.v3.min.js",
-                        "editor/vendor/i18next/i18next.min.js"
+                    "packages/node_modules/@node-red/editor-client/public/vendor/vendor.js": [
+                        "packages/node_modules/@node-red/editor-client/src/vendor/jquery/js/jquery-1.11.3.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/bootstrap/js/bootstrap.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/jquery/js/jquery-ui-1.10.3.custom.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/jquery/js/jquery.ui.touch-punch.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/marked/marked.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/d3/d3.v3.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/i18next/i18next.min.js"
                     ],
-                    "public/vendor/vendor.css": [
-                        "editor/vendor/orion/built-editor.css"
+                    "packages/node_modules/@node-red/editor-client/public/vendor/vendor.css": [
                         // TODO: resolve relative resource paths in
                         //       bootstrap/FA/jquery
+                    ],
+                    "packages/node_modules/@node-red/editor-client/public/vendor/jsonata/jsonata.min.js": [
+                        "node_modules/jsonata/jsonata-es5.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/jsonata/formatter.js"
+                    ],
+                    "packages/node_modules/@node-red/editor-client/public/vendor/ace/worker-jsonata.js": [
+                        "node_modules/jsonata/jsonata-es5.min.js",
+                        "packages/node_modules/@node-red/editor-client/src/vendor/jsonata/worker-jsonata.js"
                     ]
                 }
             }
@@ -151,7 +207,10 @@ module.exports = function(grunt) {
         uglify: {
             build: {
                 files: {
-                    'public/red/red.min.js': 'public/red/red.js'
+                    'packages/node_modules/@node-red/editor-client/public/red/red.min.js': 'packages/node_modules/@node-red/editor-client/public/red/red.js',
+                    'packages/node_modules/@node-red/editor-client/public/red/main.min.js': 'packages/node_modules/@node-red/editor-client/public/red/main.js',
+                    'packages/node_modules/@node-red/editor-client/public/vendor/ace/mode-jsonata.js': 'packages/node_modules/@node-red/editor-client/src/vendor/jsonata/mode-jsonata.js',
+                    'packages/node_modules/@node-red/editor-client/public/vendor/ace/snippets/jsonata.js': 'packages/node_modules/@node-red/editor-client/src/vendor/jsonata/snippets-jsonata.js'
                 }
             }
         },
@@ -161,44 +220,50 @@ module.exports = function(grunt) {
                     outputStyle: 'compressed'
                 },
                 files: [{
-                    dest: 'public/red/style.min.css',
-                    src: 'editor/sass/style.scss'
+                    dest: 'packages/node_modules/@node-red/editor-client/public/red/style.min.css',
+                    src: 'packages/node_modules/@node-red/editor-client/src/sass/style.scss'
                 },
                 {
-                    dest: 'public/vendor/bootstrap/css/bootstrap.min.css',
-                    src: 'editor/vendor/bootstrap/css/bootstrap.css'
+                    dest: 'packages/node_modules/@node-red/editor-client/public/vendor/bootstrap/css/bootstrap.min.css',
+                    src: 'packages/node_modules/@node-red/editor-client/src/vendor/bootstrap/css/bootstrap.css'
                 }]
             }
         },
         jsonlint: {
             messages: {
                 src: [
-                    'nodes/core/locales/en-US/messages.json',
-                    'locales/en-US/editor.json',
-                    'locales/en-US/runtime.json'
+                    'packages/node_modules/@node-red/nodes/locales/**/*.json',
+                    'packages/node_modules/@node-red/editor-client/locales/**/*.json',
+                    'packages/node_modules/@node-red/runtime/locales/**/*.json'
+                ]
+            },
+            keymaps: {
+                src: [
+                    'packages/node_modules/@node-red/editor-client/src/js/keymap.json'
                 ]
             }
         },
         attachCopyright: {
             js: {
                 src: [
-                    'public/red/red.min.js'
+                    'packages/node_modules/@node-red/editor-client/public/red/red.min.js',
+                    'packages/node_modules/@node-red/editor-client/public/red/main.min.js'
                 ]
             },
             css: {
                 src: [
-                    'public/red/style.min.css'
+                    'packages/node_modules/@node-red/editor-client/public/red/style.min.css'
                 ]
             }
         },
         clean: {
             build: {
                 src: [
-                    "public/red",
-                    "public/index.html",
-                    "public/favicon.ico",
-                    "public/icons",
-                    "public/vendor"
+                    "packages/node_modules/@node-red/editor-client/public/red",
+                    "packages/node_modules/@node-red/editor-client/public/index.html",
+                    "packages/node_modules/@node-red/editor-client/public/favicon.ico",
+                    "packages/node_modules/@node-red/editor-client/public/icons",
+                    "packages/node_modules/@node-red/editor-client/public/vendor"
                 ]
             },
             release: {
@@ -210,35 +275,48 @@ module.exports = function(grunt) {
         watch: {
             js: {
                 files: [
-                    'editor/js/**/*.js'
+                    'packages/node_modules/@node-red/editor-client/src/js/**/*.js'
                 ],
-                tasks: ['concat','uglify','attachCopyright:js']
+                tasks: ['copy:build','concat','uglify','attachCopyright:js']
             },
             sass: {
                 files: [
-                    'editor/sass/**/*.scss'
+                    'packages/node_modules/@node-red/editor-client/src/sass/**/*.scss'
                 ],
                 tasks: ['sass','attachCopyright:css']
             },
             json: {
                 files: [
-                    'nodes/core/locales/en-US/messages.json',
-                    'locales/en-US/editor.json',
-                    'locales/en-US/runtime.json'
+                    'packages/node_modules/@node-red/nodes/locales/**/*.json',
+                    'packages/node_modules/@node-red/editor-client/locales/**/*.json',
+                    'packages/node_modules/@node-red/runtime/locales/**/*.json'
                 ],
                 tasks: ['jsonlint:messages']
+            },
+            keymaps: {
+                files: [
+                    'packages/node_modules/@node-red/editor-client/src/js/keymap.json'
+                ],
+                tasks: ['jsonlint:keymaps','copy:build']
+            },
+            misc: {
+                files: [
+                    'CHANGELOG.md'
+                ],
+                tasks: ['copy:build']
             }
         },
 
         nodemon: {
             /* uses .nodemonignore */
             dev: {
-                script: 'red.js',
+                script: 'packages/node_modules/node-red/red.js',
                 options: {
                     args: nodemonArgs,
                     ext: 'js,html,json',
                     watch: [
-                        'red','nodes','locales'
+                        'packages/node_modules',
+                        '!packages/node_modules/@node-red/editor-client'
                     ]
                 }
             }
@@ -255,58 +333,60 @@ module.exports = function(grunt) {
 
         copy: {
             build: {
-                files:[{
-                    cwd: 'editor/images',
-                    src: '**',
-                    expand: true,
-                    dest: 'public/red/images/'
-                },
-                {
-                    cwd: 'editor/vendor',
-                    src: [
-                        'ace/**',
-                        //'bootstrap/css/**',
-                        'bootstrap/img/**',
-                        'jquery/css/**',
-                        'font-awesome/**'
-                    ],
-                    expand: true,
-                    dest: 'public/vendor/'
-                },
-                {
-                    cwd: 'editor/icons',
-                    src: '**',
-                    expand: true,
-                    dest: 'public/icons/'
-                },
-                {
-                    expand: true,
-                    src: ['editor/index.html','editor/favicon.ico'],
-                    dest: 'public/',
-                    flatten: true
-                }]
-            },
-            release: {
-                files: [{
-                    mode: true,
-                    expand: true,
-                    src: [
-                        '*.md',
-                        'LICENSE',
-                        'package.json',
-                        'settings.js',
-                        'red.js',
-                        'lib/.gitignore',
-                        'nodes/*.demo',
-                        'nodes/core/**',
-                        'red/**',
-                        'public/**',
-                        'editor/templates/**',
-                        'bin/**',
-                        'locales/**'
-                    ],
-                    dest: path.resolve('<%= paths.dist %>/node-red-<%= pkg.version %>')
-                }]
+                files:[
+                    {
+                        src: 'packages/node_modules/@node-red/editor-client/src/js/main.js',
+                        dest: 'packages/node_modules/@node-red/editor-client/public/red/main.js'
+                    },
+                    {
+                        src: 'packages/node_modules/@node-red/editor-client/src/js/keymap.json',
+                        dest: 'packages/node_modules/@node-red/editor-client/public/red/keymap.json'
+                    },
+                    {
+                        cwd: 'packages/node_modules/@node-red/editor-client/src/images',
+                        src: '**',
+                        expand: true,
+                        dest: 'packages/node_modules/@node-red/editor-client/public/red/images/'
+                    },
+                    {
+                        cwd: 'packages/node_modules/@node-red/editor-client/src/vendor',
+                        src: [
+                            'ace/**',
+                            //'bootstrap/css/**',
+                            'bootstrap/img/**',
+                            'jquery/css/**',
+                            'font-awesome/**'
+                        ],
+                        expand: true,
+                        dest: 'packages/node_modules/@node-red/editor-client/public/vendor/'
+                    },
+                    {
+                        cwd: 'packages/node_modules/@node-red/editor-client/src/icons',
+                        src: '**',
+                        expand: true,
+                        dest: 'packages/node_modules/@node-red/editor-client/public/icons/'
+                    },
+                    {
+                        expand: true,
+                        src: ['packages/node_modules/@node-red/editor-client/src/index.html','packages/node_modules/@node-red/editor-client/src/favicon.ico'],
+                        dest: 'packages/node_modules/@node-red/editor-client/public/',
+                        flatten: true
+                    },
+                    {
+                        src: 'CHANGELOG.md',
+                        dest: 'packages/node_modules/@node-red/editor-client/public/red/about'
+                    },
+                    {
+                        src: 'CHANGELOG.md',
+                        dest: 'packages/node_modules/node-red/'
+                    },
+                    {
+                        cwd: 'packages/node_modules/@node-red/editor-client/src/ace/bin/',
+                        src: '**',
+                        expand: true,
+                        dest: 'packages/node_modules/@node-red/editor-client/public/vendor/ace/'
+                    }
+                ]
             }
         },
         chmod: {
@@ -314,11 +394,33 @@ module.exports = function(grunt) {
                 mode: '755'
             },
             release: {
-                // Target-specific file/dir lists and/or options go here.
                 src: [
-                    path.resolve('<%= paths.dist %>/node-red-<%= pkg.version %>/nodes/core/hardware/nrgpio*')
+                    "packages/node_modules/@node-red/nodes/core/hardware/nrgpio",
+                    "packages/node_modules/@node-red/runtime/lib/storage/localfilesystem/projects/git/node-red-*sh"
                 ]
             }
+        },
+        'npm-command': {
+            options: {
+                cmd: "pack",
+                cwd: "<%= paths.dist %>/modules"
+            },
+            'node-red': { options: { args: [__dirname+'/packages/node_modules/node-red'] } },
+            '@node-red/editor-api': { options: { args: [__dirname+'/packages/node_modules/@node-red/editor-api'] } },
+            '@node-red/editor-client': { options: { args: [__dirname+'/packages/node_modules/@node-red/editor-client'] } },
+            '@node-red/nodes': { options: { args: [__dirname+'/packages/node_modules/@node-red/nodes'] } },
+            '@node-red/registry': { options: { args: [__dirname+'/packages/node_modules/@node-red/registry'] } },
+            '@node-red/runtime': { options: { args: [__dirname+'/packages/node_modules/@node-red/runtime'] } },
+            '@node-red/util': { options: { args: [__dirname+'/packages/node_modules/@node-red/util'] } }
+
+
+        },
+        mkdir: {
+            release: {
+                options: {
+                    create: ['<%= paths.dist %>/modules']
+                },
+            },
         },
         compress: {
             release: {
@@ -326,8 +428,59 @@ module.exports = function(grunt) {
                     archive: '<%= paths.dist %>/node-red-<%= pkg.version %>.zip'
                 },
                 expand: true,
-                cwd: '<%= paths.dist %>/',
-                src: ['node-red-<%= pkg.version %>/**']
+                cwd: 'packages/node_modules/',
+                src: [
+                    '**',
+                    '!@node-red/editor-client/src/**'
+                ]
+            }
+        },
+        jsdoc : {
+            modules: {
+                src: [
+                    'API.md',
+                    'packages/node_modules/node-red/lib/red.js',
+                    'packages/node_modules/@node-red/runtime/lib/index.js',
+                    'packages/node_modules/@node-red/runtime/lib/api/*.js',
+                    'packages/node_modules/@node-red/runtime/lib/events.js',
+                    'packages/node_modules/@node-red/util/**/*.js',
+                    'packages/node_modules/@node-red/editor-api/lib/index.js',
+                    'packages/node_modules/@node-red/editor-api/lib/auth/index.js'
+                ],
+                options: {
+                    destination: 'docs',
+                    configure: './jsdoc.json'
+                }
+            },
+            _editor: {
+                src: [
+                    'packages/node_modules/@node-red/editor-client/src/js'
+                    ],
+                options: {
+                    destination: 'packages/node_modules/@node-red/editor-client/docs',
+                    configure: './jsdoc.json'
+                }
+            }
+
+        },
+        jsdoc2md: {
+            runtimeAPI: {
+                options: {
+                    separators: true
+                },
+                src: [
+                    'packages/node_modules/@node-red/runtime/lib/index.js',
+                    'packages/node_modules/@node-red/runtime/lib/api/*.js',
+                    'packages/node_modules/@node-red/runtime/lib/events.js'
+                ],
+                dest: 'packages/node_modules/@node-red/runtime/docs/api.md'
+            },
+            nodeREDUtil: {
+                options: {
+                    separators: true
+                },
+                src: 'packages/node_modules/@node-red/util/**/*.js',
+                dest: 'packages/node_modules/@node-red/util/docs/api.md'
             }
         }
     });
@@ -345,11 +498,17 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-chmod');
     grunt.loadNpmTasks('grunt-jsonlint');
+    grunt.loadNpmTasks('grunt-mocha-istanbul');
+    grunt.loadNpmTasks('grunt-webdriver');
+    grunt.loadNpmTasks('grunt-jsdoc');
+    grunt.loadNpmTasks('grunt-jsdoc-to-markdown');
+    grunt.loadNpmTasks('grunt-npm-command');
+    grunt.loadNpmTasks('grunt-mkdir');
 
     grunt.registerMultiTask('attachCopyright', function() {
         var files = this.data.src;
         var copyright = "/**\n"+
-            " * Copyright 2013, 2015 IBM Corp.\n"+
+            " * Copyright JS Foundation and other contributors, http://js.foundation\n"+
             " *\n"+
             " * Licensed under the Apache License, Version 2.0 (the \"License\");\n"+
             " * you may not use this file except in compliance with the License.\n"+
@@ -365,7 +524,7 @@ module.exports = function(grunt) {
             " **/\n";
 
         if (files) {
-            for (var i=0;i<files.length;i++) {
+            for (var i=0; i<files.length; i++) {
                 var file = files[i];
                 if (!grunt.file.exists(file)) {
                     grunt.log.warn('File '+ file + ' not found');
@@ -386,6 +545,25 @@ module.exports = function(grunt) {
         }
     });
 
+    grunt.registerTask('verifyPackageDependencies', function() {
+        var done = this.async();
+        var verifyDependencies = require("./scripts/verify-package-dependencies.js");
+        verifyDependencies().then(function(failures) {
+            if (failures.length > 0) {
+                failures.forEach(f => grunt.log.error(f));
+                grunt.fail.fatal("Failed to verify package dependencies");
+            }
+            done();
+        });
+    });
+
+    grunt.registerTask('verifyUiTestDependencies', function() {
+        if (!fs.existsSync(path.join("node_modules", "chromedriver"))) {
+            grunt.fail.fatal('You need to run "npm install chromedriver@2" before running UI test.');
+            return false;
+        }
+    });
+
     grunt.registerTask('setDevEnv',
         'Sets NODE_ENV=development so non-minified assets are used',
             function () {
@@ -394,23 +572,27 @@ module.exports = function(grunt) {
 
     grunt.registerTask('default',
         'Builds editor content then runs code style checks and unit tests on all components',
-        ['build','test-core','test-editor','test-nodes']);
+        ['build','verifyPackageDependencies','jshint:editor','mocha_istanbul:all']);
 
     grunt.registerTask('test-core',
         'Runs code style check and unit tests on core runtime code',
-        ['jshint:core','simplemocha:core']);
+        ['build','mocha_istanbul:core']);
 
     grunt.registerTask('test-editor',
         'Runs code style check on editor code',
         ['jshint:editor']);
 
+    grunt.registerTask('test-ui',
+        'Builds editor content then runs unit tests on editor ui',
+        ['verifyUiTestDependencies','build','jshint:editor','webdriver:all']);
+
     grunt.registerTask('test-nodes',
         'Runs unit tests on core nodes',
-        ['simplemocha:nodes']);
+        ['build','mocha_istanbul:nodes']);
 
     grunt.registerTask('build',
         'Builds editor content',
-        ['clean:build','concat:build','concat:vendor','uglify:build','sass:build','jsonlint:messages','copy:build','attachCopyright']);
+        ['clean:build','jsonlint','concat:build','concat:vendor','copy:build','uglify:build','sass:build','attachCopyright']);
 
     grunt.registerTask('dev',
         'Developer mode: run node-red, watch for source changes and build/restart',
@@ -418,6 +600,18 @@ module.exports = function(grunt) {
 
     grunt.registerTask('release',
         'Create distribution zip file',
-        ['build','clean:release','copy:release','chmod:release','compress:release']);
+        ['build','verifyPackageDependencies','clean:release','mkdir:release','chmod:release','compress:release','pack-modules']);
 
+    grunt.registerTask('pack-modules',
+        'Create module pack files for release',
+        ['mkdir:release','npm-command']);
+
+
+    grunt.registerTask('coverage',
+        'Run Istanbul code test coverage task',
+        ['build','mocha_istanbul:all']);
+
+    grunt.registerTask('docs',
+        'Generates API documentation',
+        ['jsdoc']);
 };
